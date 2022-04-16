@@ -2,51 +2,28 @@
 # MNIST data preparation
 
 import sys
+
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torchvision import datasets, transforms
 from matplotlib import pyplot as plt
+from torchvision import datasets, transforms
+
+from net import Net
 
 
-class Net(nn.Module):
-    # create the convulutional neural network class
+def getData(batch_size=64):
+    """ Get the training and testing data from the MNIST data set
 
-    def __init__(self) -> None:
-        super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 10, 5)
-        self.conv2 = nn.Conv2d(10, 20, 5)
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(320, 50)
-        self.fc2 = nn.Linear(50, 10)
+    Args:
+        batch_size (int, optional): The batch size for training the model.
+        Defaults to 64.
 
-    def forward(self, x):
-        # A convolution layer with 10 5x5 filters
-        x = self.conv1(x)
-        # A max pooling layer with a 2x2 window and a ReLU function applied.
-        x = F.relu(F.max_pool2d(x, 2))
-        # A convolution layer with 20 5x5 filters
-        x = self.conv2(x)
-        # A dropout layer with a 0.5 dropout rate (50%)
-        x = F.dropout(x, 0.5)
-        # A max pooling layer with a 2x2 window and a ReLU function applied
-        x = F.relu(F.max_pool2d(x, 2))
-        # A flattening operation followed by a fully connected Linear layer
-        # with 50 nodes and a ReLU function on the output
-        x = self.flatten(x)
-        x = F.relu(self.fc1(x))
-        # A final fully connected Linear layer with 10 nodes and the
-        # log_softmax function applied to the output.
-        x = F.log_softmax(self.fc2(x), dim=1)
+    Returns:
+        _type_: _description_
+    """
 
-        return x
-
-
-def getData():
-    # get the training and testing data from the MNIST data set
-
-    batch_size_train = 64
+    batch_size_train = batch_size
     batch_size_test = 1000
 
     # load MNIST data set
@@ -74,6 +51,14 @@ def getData():
 
 
 def plotSet(data_set, numberOfExamples, plotRow, plotCol):
+    """ Plot the first numberOfExamples images in the data set
+
+    Args:
+        data_set (torch.utils.data.DataLoader): The data set to plot
+        numberOfExamples (int): The number of images to plot
+        plotRow (int): The number of rows in the plot
+        plotCol (int): The number of columns in the plot
+    """
     # plot the first numberOfExamples images in the data set
     print("Examining the test set")
     examples = enumerate(data_set)
@@ -87,17 +72,26 @@ def plotSet(data_set, numberOfExamples, plotRow, plotCol):
         plt.tight_layout()
         plt.imshow(example_data[i][0], cmap='gray', interpolation='none')
         plt.title("Ground Truth: {}".format(example_targets[i]))
-        plt.xticks([])
-        plt.yticks([])
+        plt.axis('off')
 
     plt.show()
 
 
-def run_epochs(train_set, test_set, net):
+def run_epochs(train_set, test_set, net, epochs=5):
+    """ Train the network for a number of epochs
+
+    Args:
+        train_set (torch.utils.data.DataLoader): The training data set
+        test_set (torch.utils.data.DataLoader): The testing data set
+        net (torch.nn.Module): The neural network to train
+        epochs (int, optional): The number of epochs to train for.
+
+    Returns:
+        float: The accuracy on the test set
+    """
     # train and test the network
     optimizer = optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 
-    epochs = 5
     log_interval = 10
     train_losses = []
     train_counter = []
@@ -141,23 +135,29 @@ def run_epochs(train_set, test_set, net):
         # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         #     test_loss, correct, len(test_set.dataset),
         #     100. * correct / len(test_set.dataset)))
+
         test_losses.append(test_loss)
+
+        return 100. * correct / len(test_set.dataset)
 
     for epoch in range(1, epochs + 1):
         train(epoch)
-        test()
+        accuracy = test()
 
     # plot the loss
-    plt.figure()
-    plt.plot(train_counter, train_losses, color='blue')
-    plt.scatter(test_counter, test_losses, color='red')
-    plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
-    plt.xlabel('number of training examples seen')
-    plt.ylabel('negative log likelihood loss')
-    plt.show()
+    # plt.figure()
+    # plt.plot(train_counter, train_losses, color='blue')
+    # plt.scatter(test_counter, test_losses, color='red')
+    # plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
+    # plt.xlabel('number of training examples seen')
+    # plt.ylabel('negative log likelihood loss')
+    # plt.show()
+    print(accuracy)
+    return accuracy
 
 
-def main(argv):
+def main():
+    """The entry point of the program"""
     torch.manual_seed(42)  # seed for reproducibility
     torch.backends.cudnn.enabled = False  # disable CUDA
 
@@ -170,7 +170,8 @@ def main(argv):
     print(net)
 
     # train the network
-    run_epochs(train_set, test_set, net)
+    accuracy = run_epochs(train_set, test_set, net)
+    print("Accuracy on test set: {:.4f}".format(accuracy))
 
     return
 
